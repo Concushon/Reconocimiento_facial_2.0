@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controlar LED con Arduino</title>
+</head>
+<body>
+    <h1>Controla el LED</h1>
+    <button id="connect">Conectar al Arduino</button>
+    <button id="encender" disabled>Encender LED</button>
+    <button id="apagar" disabled>Apagar LED</button>
+
+    <script>
+        let port;
+        let writer;
+
+        async function connectToArduino() {
+            try {
+                // Solicita un puerto serial al usuario
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+
+                const textEncoder = new TextEncoderStream();
+                textEncoder.readable.pipeTo(port.writable);
+                writer = textEncoder.writable.getWriter();
+
+                alert("¡Conexión exitosa con Arduino!");
+
+                // Habilita los botones de control
+                document.getElementById("encender").disabled = false;
+                document.getElementById("apagar").disabled = false;
+            } catch (error) {
+                console.error("Error conectando con Arduino:", error);
+                alert("No se pudo conectar con el Arduino. Verifica el navegador y el dispositivo.");
+            }
+        }
+
+        async function sendCommand(command) {
+            if (writer) {
+                await writer.write(command + "\n");
+            } else {
+                alert("Primero conecta el Arduino.");
+            }
+        }
+
+        // Asocia eventos a los botones
+        document.getElementById("connect").addEventListener("click", connectToArduino);
+        document.getElementById("encender").addEventListener("click", () => sendCommand("1"));
+        document.getElementById("apagar").addEventListener("click", () => sendCommand("0"));
+    </script>
+</body>
+</html>

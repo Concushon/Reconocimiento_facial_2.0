@@ -1,6 +1,9 @@
 const video = document.getElementById('inputVideo');
 const canvas = document.getElementById('overlay');
 const loadingElement = document.getElementById('loading');
+document.getElementById("connect").addEventListener("click", connectToArduino);
+document.getElementById("encender").addEventListener("click", () => sendCommand("1"));
+document.getElementById("apagar").addEventListener("click", () => sendCommand("0"));
 
 (async () => {
     try {
@@ -27,6 +30,31 @@ const loadingElement = document.getElementById('loading');
         loadingElement.innerHTML = `<p>Error cargando modelos o accediendo a la webcam.</p>`;
     }
 })();
+let port;
+        let writer;
+
+        async function connectToArduino() {
+            try {
+                // Solicita un puerto serial al usuario
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+
+                const textEncoder = new TextEncoderStream();
+                textEncoder.readable.pipeTo(port.writable);
+                writer = textEncoder.writable.getWriter();
+
+                alert("¡Conexión exitosa con Arduino!");
+
+                // Habilita los botones de control
+                document.getElementById("encender").disabled = false;
+                document.getElementById("apagar").disabled = false;
+            } catch (error) {
+                console.error("Error conectando con Arduino:", error);
+                alert("No se pudo conectar con el Arduino. Verifica el navegador y el dispositivo.");
+            }
+        }
+
+
 
 function resizeCanvasToVideo() {
     const rect = video.getBoundingClientRect();
@@ -41,7 +69,13 @@ function resizeCanvasToVideo() {
     canvas.style.height = `${rect.height}px`;
 }
 
-
+async function sendCommand(command) {
+    if (writer) {
+        await writer.write(command + "\n");
+    } else {
+      console.error("conecta tushingadera");
+    }
+}
 async function detectFaces() {
     const render = async () => {
         if (!video || video.paused || video.ended) return;
@@ -51,6 +85,7 @@ async function detectFaces() {
             .withFaceLandmarks()
             .withFaceDescriptors()
             .withFaceExpressions();
+           
 
         const dims = faceapi.matchDimensions(canvas, video, true);
         const resizedDetections = faceapi.resizeResults(detections, dims);
@@ -61,6 +96,14 @@ async function detectFaces() {
         faceapi.draw.drawDetections(canvas, resizedDetections);
         faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
         faceapi.draw.drawFaceExpressions(canvas, resizedDetections, 0.05);
+        if(detections.length>0){
+            detections.forEach(detection => {
+                
+                if(detection.expressions.happy>0.5){
+                  sendCommand("1");
+                } else{sendCommand("0")}
+            });
+        }
 
         requestAnimationFrame(render);
     };
